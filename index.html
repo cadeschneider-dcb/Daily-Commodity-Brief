@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Commodity Brief</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#f4f5f7;color:#17202a}
+header{background:#111827;color:white;padding:28px 6vw;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.logo{font-size:25px;font-weight:800;letter-spacing:.3px}.sub{color:#aeb7c4;font-size:13px;margin-top:5px}
+.badge{border:1px solid #374151;border-radius:999px;padding:8px 12px;font-size:12px;color:#d1d5db}
+main{max-width:1200px;margin:30px auto;padding:0 22px}
+h2{font-size:18px;margin:28px 0 14px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:white;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 2px 8px #00000008}
+.market{font-size:13px;color:#687386;font-weight:700}.price{font-size:29px;font-weight:800;margin:10px 0 4px}.change{font-size:14px;font-weight:700}.up{color:#16794a}.down{color:#b42318}.muted{color:#8a94a3;font-size:12px}
+.hero{background:white;border:1px solid #e5e7eb;border-radius:14px;padding:22px}.hero strong{font-size:18px}.hero p{line-height:1.6;color:#4b5563}
+.cols{display:grid;grid-template-columns:1.35fr .65fr;gap:16px}.article{padding:15px 0;border-bottom:1px solid #eceff2}.article:last-child{border-bottom:0}.article a{color:#155eef;text-decoration:none;font-weight:750}.article p{margin:7px 0 0;color:#596474;line-height:1.45;font-size:14px}
+.chart{height:230px;position:relative;overflow:hidden;background:linear-gradient(#fff,#fafbfc);border-radius:10px;border:1px solid #eef0f3}
+svg{width:100%;height:100%}.note{font-size:12px;color:#7b8491;margin-top:9px}
+.takeaway{background:#111827;color:white;border-radius:14px;padding:22px}.takeaway p{color:#d1d5db;line-height:1.55}
+footer{text-align:center;color:#8a94a3;font-size:12px;padding:30px}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}}
+@media(max-width:520px){.grid{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+  <div><div class="logo">DAILY COMMODITY BRIEF</div><div class="sub">Energy markets • Version 1 dashboard</div></div>
+  <div class="badge">Sample data • API-ready</div>
+</header>
+
+<main>
+  <h2>Energy Markets</h2>
+  <section class="grid">
+    <div class="card"><div class="market">WTI CRUDE • CL</div><div class="price">$106.46</div><div class="change up">▲ +2.8%</div><div class="muted">Front month • sample</div></div>
+    <div class="card"><div class="market">BRENT CRUDE</div><div class="price">$109.20</div><div class="change up">▲ +2.7%</div><div class="muted">Front month • sample</div></div>
+    <div class="card"><div class="market">RBOB GASOLINE • RB</div><div class="price">$3.46</div><div class="change up">▲ +4.3%</div><div class="muted">Front month • sample</div></div>
+    <div class="card"><div class="market">HENRY HUB • NG</div><div class="price">$3.12</div><div class="change down">▼ -0.9%</div><div class="muted">Front month • sample</div></div>
+  </section>
+
+  <h2>Today's Biggest Move</h2>
+  <section class="hero">
+    <strong>Oil prices are being driven by supply-side risk.</strong>
+    <p>This Version 1 mockup is designed to replace the sample numbers and text with live market data and automatically researched daily news. The layout emphasizes the information an energy trader would want first: price action, the reason for the move, and what to watch next.</p>
+  </section>
+
+  <h2>WTI Price Action</h2>
+  <section class="card">
+    <div class="chart">
+      <svg viewBox="0 0 900 230" preserveAspectRatio="none">
+        <line x1="0" y1="185" x2="900" y2="185" stroke="#e5e7eb"/>
+        <line x1="0" y1="125" x2="900" y2="125" stroke="#e5e7eb"/>
+        <line x1="0" y1="65" x2="900" y2="65" stroke="#e5e7eb"/>
+        <polyline fill="none" stroke="#334155" stroke-width="4" points="0,170 90,164 180,175 270,145 360,152 450,118 540,132 630,105 720,111 810,74 900,58"/>
+      </svg>
+    </div>
+    <div class="note">Illustrative chart only. Live historical series will be connected in the next build.</div>
+  </section>
+
+  <div class="cols">
+    <div>
+      <h2>Why the Market Moved</h2>
+      <section class="card">
+        <div class="article"><a href="#">Supply & geopolitics</a><p>Track production disruptions, infrastructure attacks, sanctions, shipping risks and changes in physical flows.</p></div>
+        <div class="article"><a href="#">OPEC+</a><p>Monitor production policy, compliance, spare capacity and signals from major producers.</p></div>
+        <div class="article"><a href="#">Inventories & refining</a><p>Watch crude, gasoline and distillate inventories, refinery utilization and outages.</p></div>
+        <div class="article"><a href="#">Macro & demand</a><p>Follow the dollar, rates, economic growth expectations and transportation-fuel demand.</p></div>
+      </section>
+    </div>
+    <div>
+      <h2>Futures Curve</h2>
+      <section class="card">
+        <div class="article"><strong>WTI</strong><p>Front month: $106.46</p><p>Next month: $105.90</p><p class="up"><strong>Illustrative backwardation</strong></p></div>
+        <div class="article"><strong>Brent</strong><p>Front month: $109.20</p><p>Next month: $108.65</p></div>
+        <div class="note">Live curve data will replace these illustrative values.</div>
+      </section>
+    </div>
+  </div>
+
+  <h2>Today's Articles</h2>
+  <section class="card">
+    <div class="article"><a href="#">Reuters — Oil market update</a><p>Daily article explaining the major supply, geopolitical and physical-market catalysts.</p></div>
+    <div class="article"><a href="#">EIA — Energy market data</a><p>Authoritative inventory, production, demand and market context.</p></div>
+    <div class="article"><a href="#">CME Group — Futures quotes</a><p>Reference point for futures contracts and settlement information.</p></div>
+  </section>
+
+  <h2>Trader Takeaway</h2>
+  <section class="takeaway">
+    <strong>What should a trader watch next?</strong>
+    <p>Prioritize developments that can change the physical balance: supply disruptions, OPEC+ decisions, inventory surprises, refinery outages, shipping constraints, weather and changes in demand expectations. The key question is whether today's move is a temporary headline shock or a change in the underlying supply-demand balance.</p>
+  </section>
+</main>
+
+<footer>Daily Commodity Brief • Version 1 concept • Sample figures shown for layout purposes</footer>
+</body>
+</html>
