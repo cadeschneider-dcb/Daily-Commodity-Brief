@@ -8,11 +8,12 @@ export default async function handler(req, res) {
       });
     }
 
-    // Get today's date and yesterday's date
+    // Compare today's stored observation with up to 7 days earlier.
+    // This helps handle weekends, holidays, and daily-plan update timing.
     const end = new Date();
     const start = new Date();
 
-    start.setUTCDate(end.getUTCDate() - 1);
+    start.setUTCDate(end.getUTCDate() - 7);
 
     const formatDate = (date) =>
       date.toISOString().split("T")[0];
@@ -42,12 +43,45 @@ export default async function handler(req, res) {
       });
     }
 
+    const symbols = ["WTI", "BRENT", "GASOLINE", "NATURALGAS"];
+    const changes = {};
+
+    for (const symbol of symbols) {
+      const item = data.rates?.[symbol];
+
+      if (!item || !item.start_rate || !item.end_rate) {
+        changes[symbol] = null;
+        continue;
+      }
+
+      // API rates are commodity units per USD.
+      // Invert them to get the prices displayed on our dashboard.
+      const startPrice = 1 / item.start_rate;
+      const endPrice = 1 / item.end_rate;
+
+      const dollarChange = endPrice - startPrice;
+      const percentChange =
+        (dollarChange / startPrice) * 100;
+
+      changes[symbol] = {
+        start_price: startPrice,
+        end_price: endPrice,
+        dollar_change: dollarChange,
+        percent_change: percentChange
+      };
+    }
+
     res.setHeader(
       "Cache-Control",
       "s-maxage=21600, stale-while-revalidate=86400"
     );
 
-    return res.status(200).json(data);
+    return res.status(200).json({
+      success: true,
+      start_date: data.start_date,
+      end_date: data.end_date,
+      changes
+    });
 
   } catch (error) {
     console.error("Change API error:", error);
