@@ -46,11 +46,12 @@ export default async function handler(req, res) {
 
       const rows = data.response?.data;
 
-      if (!rows || rows.length < 2) {
-        throw new Error(
-          "Not enough EIA observations"
-        );
-      }
+    if (!rows || rows.length < 2) {
+  throw new Error(
+    `Not enough EIA observations for ${baseUrl} ${params}. ` +
+    `Rows returned: ${rows ? rows.length : 0}`
+  );
+}
 
       return rows;
     }
