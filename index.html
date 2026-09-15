@@ -32,11 +32,35 @@ footer{text-align:center;color:#8a94a3;font-size:12px;padding:30px}
 <main>
   <h2>Energy Markets</h2>
   <section class="grid">
-    <div class="card"><div class="market">WTI CRUDE • CL</div><div class="price">$106.46</div><div class="change up">▲ +2.8%</div><div class="muted">Front month • sample</div></div>
-    <div class="card"><div class="market">BRENT CRUDE</div><div class="price">$109.20</div><div class="change up">▲ +2.7%</div><div class="muted">Front month • sample</div></div>
-    <div class="card"><div class="market">RBOB GASOLINE • RB</div><div class="price">$3.46</div><div class="change up">▲ +4.3%</div><div class="muted">Front month • sample</div></div>
-    <div class="card"><div class="market">HENRY HUB • NG</div><div class="price">$3.12</div><div class="change down">▼ -0.9%</div><div class="muted">Front month • sample</div></div>
-  </section>
+    <div class="card">
+    <div class="market">WTI CRUDE • WTI</div>
+    <div class="price" id="wti-price">Loading...</div>
+    <div class="change" id="wti-change">—</div>
+    <div class="muted">USD / barrel • daily data</div>
+  </div>
+    
+  <div class="card">
+    <div class="market">BRENT CRUDE • BRENT</div>
+    <div class="price" id="brent-price">Loading...</div>
+    <div class="change" id="brent-change">—</div>
+    <div class="muted">USD / barrel • daily data</div>
+  </div>
+
+  <div class="card">
+    <div class="market">RBOB GASOLINE • GASOLINE</div>
+    <div class="price" id="gasoline-price">Loading...</div>
+    <div class="change" id="gasoline-change">—</div>
+    <div class="muted">USD / gallon • daily data</div>
+  </div>
+
+  <div class="card">
+    <div class="market">HENRY HUB • NATURALGAS</div>
+    <div class="price" id="naturalgas-price">Loading...</div>
+    <div class="change" id="naturalgas-change">—</div>
+    <div class="muted">USD / MMBtu • daily data</div>
+  </div>
+
+</section>
 
   <h2>Today's Biggest Move</h2>
   <section class="hero">
@@ -92,5 +116,51 @@ footer{text-align:center;color:#8a94a3;font-size:12px;padding:30px}
 </main>
 
 <footer>Daily Commodity Brief • Version 1 concept • Sample figures shown for layout purposes</footer>
+<script>
+async function loadMarketPrices() {
+  try {
+    const response = await fetch('/api/markets');
+
+    if (!response.ok) {
+      throw new Error('Market API request failed');
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.rates) {
+      throw new Error('Invalid market data');
+    }
+
+    // EnergypriceAPI returns commodity units per USD.
+    // Invert each rate to display USD per commodity unit.
+    const wti = 1 / data.rates.WTI;
+    const brent = 1 / data.rates.BRENT;
+    const gasoline = 1 / data.rates.GASOLINE;
+    const naturalGas = 1 / data.rates.NATURALGAS;
+
+    document.getElementById('wti-price').textContent =
+      '$' + wti.toFixed(2);
+
+    document.getElementById('brent-price').textContent =
+      '$' + brent.toFixed(2);
+
+    document.getElementById('gasoline-price').textContent =
+      '$' + gasoline.toFixed(4);
+
+    document.getElementById('naturalgas-price').textContent =
+      '$' + naturalGas.toFixed(3);
+
+  } catch (error) {
+    console.error('Unable to load market prices:', error);
+
+    document.getElementById('wti-price').textContent = 'Unavailable';
+    document.getElementById('brent-price').textContent = 'Unavailable';
+    document.getElementById('gasoline-price').textContent = 'Unavailable';
+    document.getElementById('naturalgas-price').textContent = 'Unavailable';
+  }
+}
+
+loadMarketPrices();
+</script>
 </body>
 </html>
