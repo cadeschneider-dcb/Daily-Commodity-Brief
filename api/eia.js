@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       "&frequency=weekly" +
       "&data[0]=value" +
       "&facets[product][]=EPC0" +
-      "&facets[process][]=SAXL" +
+      "&facets[process][]=SAX" +
       "&facets[duoarea][]=NUS" +
       "&sort[0][column]=period" +
       "&sort[0][direction]=desc" +
