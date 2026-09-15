@@ -159,8 +159,74 @@ async function loadMarketPrices() {
     document.getElementById('naturalgas-price').textContent = 'Unavailable';
   }
 }
+async function loadMarketChanges() {
+  try {
+    const response = await fetch('/api/changes');
 
+    if (!response.ok) {
+      throw new Error('Change API request failed');
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.changes) {
+      throw new Error('Invalid change data');
+    }
+
+    const markets = [
+      {
+        symbol: 'WTI',
+        element: 'wti-change',
+        decimals: 2
+      },
+      {
+        symbol: 'BRENT',
+        element: 'brent-change',
+        decimals: 2
+      },
+      {
+        symbol: 'GASOLINE',
+        element: 'gasoline-change',
+        decimals: 4
+      },
+      {
+        symbol: 'NATURALGAS',
+        element: 'naturalgas-change',
+        decimals: 3
+      }
+    ];
+
+    markets.forEach(market => {
+      const change = data.changes[market.symbol];
+      const element = document.getElementById(market.element);
+
+      if (!change || !element) return;
+
+      const dollar = change.dollar_change;
+      const percent = change.percent_change;
+
+      const arrow = dollar > 0 ? '▲' : dollar < 0 ? '▼' : '•';
+      const sign = dollar > 0 ? '+' : '';
+
+      element.textContent =
+        `${arrow} ${sign}$${dollar.toFixed(market.decimals)} ` +
+        `(${percent > 0 ? '+' : ''}${percent.toFixed(2)}%)`;
+
+      if (dollar > 0) {
+        element.classList.add('up');
+        element.classList.remove('down');
+      } else if (dollar < 0) {
+        element.classList.add('down');
+        element.classList.remove('up');
+      }
+    });
+
+  } catch (error) {
+    console.error('Unable to load market changes:', error);
+  }
+}
 loadMarketPrices();
+loadMarketChanges();
 </script>
 </body>
 </html>
