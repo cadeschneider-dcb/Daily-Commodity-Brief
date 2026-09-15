@@ -8,69 +8,108 @@ export default async function handler(req, res) {
       });
     }
 
-    // Compare today's stored observation with up to 7 days earlier.
-    // This helps handle weekends, holidays, and daily-plan update timing.
-    const end = new Date();
-    const start = new Date();
+    const headers = {
+      "X-API-KEY": apiKey,
+      "Content-Type": "application/json"
+    };
 
-    start.setUTCDate(end.getUTCDate() - 7);
+    // Get the latest available prices
+    const latestResponse = await fetch(
+      "https://api.energypriceapi.com/v1/latest",
+      { headers }
+    );
+
+    const latestData = await latestResponse.json();
+
+    if (!latestResponse.ok || latestData.success === false) {
+      return res.status(500).json({
+        error: "Unable to retrieve latest prices",
+        details: latestData
+      });
+    }
+
+    // The timestamp tells us when the latest observation is from.
+    const latestDate = new Date(latestData.timestamp * 1000);
+
+    // Start with the previous calendar day.
+    const previousDate = new Date(latestDate);
+    previousDate.setUTCDate(previousDate.getUTCDate() - 1);
+
+    // If latest observation is Monday, compare with Friday.
+    // If latest observation is Sunday, compare with Friday.
+    // If latest observation is Saturday, compare with Friday.
+    const day = latestDate.getUTCDay();
+
+    if (day === 1) {
+      previousDate.setUTCDate(latestDate.getUTCDate() - 3);
+    } else if (day === 0) {
+      previousDate.setUTCDate(latestDate.getUTCDate() - 2);
+    } else if (day === 6) {
+      previousDate.setUTCDate(latestDate.getUTCDate() - 1);
+    }
 
     const formatDate = (date) =>
       date.toISOString().split("T")[0];
 
-    const startDate = formatDate(start);
-    const endDate = formatDate(end);
+    const previousDateString = formatDate(previousDate);
+    const latestDateString = formatDate(latestDate);
 
-    const url =
-      `https://api.energypriceapi.com/v1/change` +
-      `?base=USD` +
-      `&start_date=${startDate}` +
-      `&end_date=${endDate}`;
+    // Get the previous available daily observation
+    const historicalResponse = await fetch(
+      `https://api.energypriceapi.com/v1/${previousDateString}`,
+      { headers }
+    );
 
-    const response = await fetch(url, {
-      headers: {
-        "X-API-KEY": apiKey,
-        "Content-Type": "application/json"
-      }
-    });
+    const historicalData = await historicalResponse.json();
 
-    const data = await response.json();
-
-    if (!response.ok || data.success === false) {
-      return res.status(response.status || 500).json({
-        error: "EnergypriceAPI change request failed",
-        details: data
+    if (
+      !historicalResponse.ok ||
+      historicalData.success === false
+    ) {
+      return res.status(500).json({
+        error: "Unable to retrieve previous prices",
+        details: historicalData
       });
     }
 
-    const symbols = ["WTI", "BRENT", "GASOLINE", "NATURALGAS"];
+    const symbols = [
+      "WTI",
+      "BRENT",
+      "GASOLINE",
+      "NATURALGAS"
+    ];
+
     const changes = {};
 
     for (const symbol of symbols) {
-      const item = data.rates?.[symbol];
+      const latestRate = latestData.rates?.[symbol];
+      const previousRate = historicalData.rates?.[symbol];
 
-      if (!item || !item.start_rate || !item.end_rate) {
+      if (!latestRate || !previousRate) {
         changes[symbol] = null;
         continue;
       }
 
-      // API rates are commodity units per USD.
-      // Invert them to get the prices displayed on our dashboard.
-      const startPrice = 1 / item.start_rate;
-      const endPrice = 1 / item.end_rate;
+      // EnergypriceAPI returns commodity units per USD.
+      // Invert to obtain USD per commodity unit.
+      const currentPrice = 1 / latestRate;
+      const previousPrice = 1 / previousRate;
 
-      const dollarChange = endPrice - startPrice;
+      const dollarChange =
+        currentPrice - previousPrice;
+
       const percentChange =
-        (dollarChange / startPrice) * 100;
+        (dollarChange / previousPrice) * 100;
 
       changes[symbol] = {
-        start_price: startPrice,
-        end_price: endPrice,
+        previous_price: previousPrice,
+        current_price: currentPrice,
         dollar_change: dollarChange,
         percent_change: percentChange
       };
     }
 
+    // Cache heavily because the free plan only updates daily.
     res.setHeader(
       "Cache-Control",
       "s-maxage=21600, stale-while-revalidate=86400"
@@ -78,16 +117,16 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      start_date: data.start_date,
-      end_date: data.end_date,
+      previous_date: previousDateString,
+      latest_date: latestDateString,
       changes
     });
 
   } catch (error) {
-    console.error("Change API error:", error);
+    console.error("Daily change API error:", error);
 
     return res.status(500).json({
-      error: "Unable to retrieve market changes"
+      error: "Unable to calculate daily market changes"
     });
   }
 }
