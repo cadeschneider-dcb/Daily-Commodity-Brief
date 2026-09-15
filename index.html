@@ -61,7 +61,74 @@ footer{text-align:center;color:#8a94a3;font-size:12px;padding:30px}
   </div>
 
 </section>
+<section class="section">
 
+  <div class="section-header">
+    <div>
+      <h2>EIA Weekly Fundamentals</h2>
+      <p class="muted" id="eia-date">
+        Loading latest EIA data...
+      </p>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="market">COMMERCIAL CRUDE</div>
+      <div class="price" id="crude-stock">
+        Loading...
+      </div>
+      <div class="change" id="crude-stock-change">
+        —
+      </div>
+      <div class="muted">
+        Million barrels • Excludes SPR
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="market">CUSHING CRUDE</div>
+      <div class="price" id="cushing-stock">
+        Loading...
+      </div>
+      <div class="change" id="cushing-stock-change">
+        —
+      </div>
+      <div class="muted">
+        Million barrels • Cushing, OK
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="market">MOTOR GASOLINE</div>
+      <div class="price" id="gasoline-stock">
+        Loading...
+      </div>
+      <div class="change" id="gasoline-stock-change">
+        —
+      </div>
+      <div class="muted">
+        Million barrels • U.S.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="market">DISTILLATES</div>
+      <div class="price" id="distillate-stock">
+        Loading...
+      </div>
+      <div class="change" id="distillate-stock-change">
+        —
+      </div>
+      <div class="muted">
+        Million barrels • U.S.
+      </div>
+    </div>
+
+  </div>
+
+</section>
   <h2>Today's Biggest Move</h2>
   <section class="hero">
     <strong>Oil prices are being driven by supply-side risk.</strong>
@@ -225,8 +292,103 @@ async function loadMarketChanges() {
     console.error('Unable to load market changes:', error);
   }
 }
+async function loadEiaFundamentals() {
+  try {
+    const response = await fetch('/api/eia');
+
+    if (!response.ok) {
+      throw new Error('EIA API request failed');
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error('Invalid EIA data');
+    }
+
+    const metrics = [
+      {
+        data: data.crude_inventory,
+        priceId: 'crude-stock',
+        changeId: 'crude-stock-change'
+      },
+      {
+        data: data.cushing_inventory,
+        priceId: 'cushing-stock',
+        changeId: 'cushing-stock-change'
+      },
+      {
+        data: data.gasoline_inventory,
+        priceId: 'gasoline-stock',
+        changeId: 'gasoline-stock-change'
+      },
+      {
+        data: data.distillate_inventory,
+        priceId: 'distillate-stock',
+        changeId: 'distillate-stock-change'
+      }
+    ];
+
+    metrics.forEach(metric => {
+      const item = metric.data;
+
+      const priceElement =
+        document.getElementById(metric.priceId);
+
+      const changeElement =
+        document.getElementById(metric.changeId);
+
+      priceElement.textContent =
+        item.latest_mmbbl.toFixed(3) + ' MMbbl';
+
+      const change =
+        item.weekly_change_mmbbl;
+
+      const arrow =
+        change > 0 ? '▲' :
+        change < 0 ? '▼' : '•';
+
+      const sign =
+        change > 0 ? '+' : '';
+
+      changeElement.textContent =
+        `${arrow} ${sign}${change.toFixed(3)} MMbbl ` +
+        `(${item.weekly_percent_change > 0 ? '+' : ''}` +
+        `${item.weekly_percent_change.toFixed(2)}%)`;
+
+      if (change > 0) {
+        changeElement.classList.add('up');
+        changeElement.classList.remove('down');
+      } else if (change < 0) {
+        changeElement.classList.add('down');
+        changeElement.classList.remove('up');
+      }
+    });
+
+    const date =
+      new Date(
+        data.crude_inventory.latest_date +
+        'T00:00:00'
+      );
+
+    document.getElementById('eia-date').textContent =
+      'Week ending ' +
+      date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+
+  } catch (error) {
+    console.error(
+      'Unable to load EIA fundamentals:',
+      error
+    );
+  }
+}  
 loadMarketPrices();
 loadMarketChanges();
+loadEiaFundementals ();  
 </script>
 </body>
 </html>
