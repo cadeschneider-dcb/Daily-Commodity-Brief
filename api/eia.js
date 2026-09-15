@@ -8,74 +8,103 @@ export default async function handler(req, res) {
       });
     }
 
-    const url =
-      "https://api.eia.gov/v2/petroleum/stoc/wstk/data/" +
-      `?api_key=${apiKey}` +
-      "&frequency=weekly" +
-      "&data[0]=value" +
+    const baseUrl =
+      "https://api.eia.gov/v2/petroleum/stoc/wstk/data/";
+
+    // Helper function to request the latest two observations
+    async function getEiaData(params) {
+      const query =
+        `?api_key=${apiKey}` +
+        "&frequency=weekly" +
+        "&data[0]=value" +
+        params +
+        "&sort[0][column]=period" +
+        "&sort[0][direction]=desc" +
+        "&offset=0" +
+        "&length=2";
+
+      const response = await fetch(baseUrl + query);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error("EIA request failed");
+      }
+
+      const rows = data.response?.data;
+
+      if (!rows || rows.length < 2) {
+        throw new Error("Not enough EIA observations");
+      }
+
+      return rows;
+    }
+
+    // -----------------------------
+    // 1. U.S. COMMERCIAL CRUDE
+    // -----------------------------
+
+    const crudeRows = await getEiaData(
       "&facets[product][]=EPC0" +
       "&facets[process][]=SAX" +
-      "&facets[duoarea][]=NUS" +
-      "&sort[0][column]=period" +
-      "&sort[0][direction]=desc" +
-      "&offset=0" +
-      "&length=2";
+      "&facets[duoarea][]=NUS"
+    );
 
-    const response = await fetch(url);
-    const data = await response.json();
+    // -----------------------------
+    // 2. CUSHING CRUDE
+    // -----------------------------
 
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: "EIA request failed",
-        details: data
-      });
-    }
+    const cushingRows = await getEiaData(
+      "&facets[series][]=W_EPC0_SAX_YCUOK_MBBL"
+    );
 
-    const rows = data.response?.data;
+    // -----------------------------
+    // 3. TOTAL MOTOR GASOLINE
+    // -----------------------------
 
-    if (!rows || rows.length < 2) {
-      return res.status(500).json({
-        error: "Not enough EIA observations",
-        details: data
-      });
-    }
+    const gasolineRows = await getEiaData(
+      "&facets[product][]=EPM0" +
+      "&facets[process][]=SAE" +
+      "&facets[duoarea][]=NUS"
+    );
 
-    const latest = rows[0];
-    const previous = rows[1];
+    // -----------------------------
+    // 4. DISTILLATE FUEL OIL
+    // -----------------------------
 
-    const latestValue = Number(latest.value);
-    const previousValue = Number(previous.value);
+    const distillateRows = await getEiaData(
+      "&facets[product][]=EPD0" +
+      "&facets[process][]=SAE" +
+      "&facets[duoarea][]=NUS"
+    );
 
-    const weeklyChange =
-      latestValue - previousValue;
+    // Convert each pair of observations
+    // into dashboard-ready information.
+    function calculateMetric(rows, name) {
+      const latest = rows[0];
+      const previous = rows[1];
 
-    const weeklyPercentChange =
-      (weeklyChange / previousValue) * 100;
+      const latestValue = Number(latest.value);
+      const previousValue = Number(previous.value);
 
-    return res.status(200).json({
-      success: true,
+      const weeklyChange =
+        latestValue - previousValue;
 
-      crude_inventory: {
-        series:
-          "U.S. Commercial Crude Oil Inventories",
+      const percentChange =
+        (weeklyChange / previousValue) * 100;
 
-        definition:
-          "Ending stocks excluding SPR and lease stocks",
+      return {
+        name,
 
-        unit:
-          "thousand barrels",
+        unit: "thousand barrels",
 
-        latest_date:
-          latest.period,
+        latest_date: latest.period,
+        previous_date: previous.period,
 
-        previous_date:
-          previous.period,
+        latest: latestValue,
+        previous: previousValue,
 
-        latest:
-          latestValue,
-
-        previous:
-          previousValue,
+        latest_mmbbl:
+          latestValue / 1000,
 
         weekly_change:
           weeklyChange,
@@ -84,16 +113,48 @@ export default async function handler(req, res) {
           weeklyChange / 1000,
 
         weekly_percent_change:
-          weeklyPercentChange
-      }
-    });
+          percentChange
+      };
+    }
+
+    const result = {
+      success: true,
+
+      crude_inventory: calculateMetric(
+        crudeRows,
+        "U.S. Commercial Crude Oil"
+      ),
+
+      cushing_inventory: calculateMetric(
+        cushingRows,
+        "Cushing Crude Oil"
+      ),
+
+      gasoline_inventory: calculateMetric(
+        gasolineRows,
+        "U.S. Total Motor Gasoline"
+      ),
+
+      distillate_inventory: calculateMetric(
+        distillateRows,
+        "U.S. Distillate Fuel Oil"
+      )
+    };
+
+    // EIA updates weekly, so cache the result.
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=21600, stale-while-revalidate=86400"
+    );
+
+    return res.status(200).json(result);
 
   } catch (error) {
     console.error("EIA API error:", error);
 
     return res.status(500).json({
-      error:
-        "Unable to retrieve EIA data"
+      error: "Unable to retrieve EIA data",
+      details: error.message
     });
   }
 }
