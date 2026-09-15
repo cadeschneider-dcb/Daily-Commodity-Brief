@@ -8,11 +8,25 @@ export default async function handler(req, res) {
       });
     }
 
-    const baseUrl =
+    // -----------------------------------
+    // EIA API ROUTES
+    // -----------------------------------
+
+    const stocksUrl =
       "https://api.eia.gov/v2/petroleum/stoc/wstk/data/";
 
-    // Helper function to request the latest two observations
-    async function getEiaData(params) {
+    const productionUrl =
+      "https://api.eia.gov/v2/petroleum/sum/sndw/data/";
+
+    const utilizationUrl =
+      "https://api.eia.gov/v2/petroleum/pnp/wiup/data/";
+
+
+    // -----------------------------------
+    // GENERIC EIA REQUEST
+    // -----------------------------------
+
+    async function getEiaData(baseUrl, params) {
       const query =
         `?api_key=${apiKey}` +
         "&frequency=weekly" +
@@ -33,53 +47,73 @@ export default async function handler(req, res) {
       const rows = data.response?.data;
 
       if (!rows || rows.length < 2) {
-        throw new Error("Not enough EIA observations");
+        throw new Error(
+          "Not enough EIA observations"
+        );
       }
 
       return rows;
     }
 
-    // -----------------------------
-    // 1. U.S. COMMERCIAL CRUDE
-    // -----------------------------
+
+    // -----------------------------------
+    // INVENTORIES
+    // -----------------------------------
 
     const crudeRows = await getEiaData(
+      stocksUrl,
       "&facets[product][]=EPC0" +
-      "&facets[process][]=SAX" +
+      "&facets[process][]=SAXL" +
       "&facets[duoarea][]=NUS"
     );
 
-    // -----------------------------
-    // 2. CUSHING CRUDE
-    // -----------------------------
-
     const cushingRows = await getEiaData(
+      stocksUrl,
       "&facets[series][]=W_EPC0_SAX_YCUOK_MBBL"
     );
 
-    // -----------------------------
-    // 3. TOTAL MOTOR GASOLINE
-    // -----------------------------
-
     const gasolineRows = await getEiaData(
+      stocksUrl,
       "&facets[product][]=EPM0" +
       "&facets[process][]=SAE" +
       "&facets[duoarea][]=NUS"
     );
 
-    // -----------------------------
-    // 4. DISTILLATE FUEL OIL
-    // -----------------------------
-
     const distillateRows = await getEiaData(
+      stocksUrl,
       "&facets[product][]=EPD0" +
       "&facets[process][]=SAE" +
       "&facets[duoarea][]=NUS"
     );
 
-    // Convert each pair of observations
-    // into dashboard-ready information.
-    function calculateMetric(rows, name) {
+
+    // -----------------------------------
+    // U.S. CRUDE PRODUCTION
+    // -----------------------------------
+
+    const productionRows = await getEiaData(
+      productionUrl,
+      "&facets[process][]=FPF" +
+      "&facets[duoarea][]=NUS"
+    );
+
+
+    // -----------------------------------
+    // REFINERY UTILIZATION
+    // -----------------------------------
+
+    const utilizationRows = await getEiaData(
+      utilizationUrl,
+      "&facets[process][]=YUP" +
+      "&facets[duoarea][]=NUS"
+    );
+
+
+    // -----------------------------------
+    // INVENTORY CALCULATOR
+    // -----------------------------------
+
+    function calculateInventory(rows, name) {
       const latest = rows[0];
       const previous = rows[1];
 
@@ -94,7 +128,6 @@ export default async function handler(req, res) {
 
       return {
         name,
-
         unit: "thousand barrels",
 
         latest_date: latest.period,
@@ -117,31 +150,128 @@ export default async function handler(req, res) {
       };
     }
 
+
+    // -----------------------------------
+    // PRODUCTION CALCULATOR
+    // -----------------------------------
+
+    function calculateProduction(rows) {
+      const latest = rows[0];
+      const previous = rows[1];
+
+      const latestValue = Number(latest.value);
+      const previousValue = Number(previous.value);
+
+      const change =
+        latestValue - previousValue;
+
+      return {
+        name: "U.S. Crude Oil Production",
+
+        unit: "thousand barrels per day",
+
+        latest_date: latest.period,
+        previous_date: previous.period,
+
+        latest: latestValue,
+        previous: previousValue,
+
+        latest_mmbd:
+          latestValue / 1000,
+
+        previous_mmbd:
+          previousValue / 1000,
+
+        weekly_change:
+          change,
+
+        weekly_change_mmbd:
+          change / 1000,
+
+        weekly_percent_change:
+          (change / previousValue) * 100
+      };
+    }
+
+
+    // -----------------------------------
+    // UTILIZATION CALCULATOR
+    // -----------------------------------
+
+    function calculateUtilization(rows) {
+      const latest = rows[0];
+      const previous = rows[1];
+
+      const latestValue = Number(latest.value);
+      const previousValue = Number(previous.value);
+
+      return {
+        name: "U.S. Refinery Utilization",
+
+        unit: "percent",
+
+        latest_date: latest.period,
+        previous_date: previous.period,
+
+        latest: latestValue,
+        previous: previousValue,
+
+        weekly_change_points:
+          latestValue - previousValue,
+
+        weekly_percent_change:
+          ((latestValue / previousValue) - 1) * 100
+      };
+    }
+
+
+    // -----------------------------------
+    // FINAL RESPONSE
+    // -----------------------------------
+
     const result = {
       success: true,
 
-      crude_inventory: calculateMetric(
-        crudeRows,
-        "U.S. Commercial Crude Oil"
-      ),
+      crude_inventory:
+        calculateInventory(
+          crudeRows,
+          "U.S. Commercial Crude Oil"
+        ),
 
-      cushing_inventory: calculateMetric(
-        cushingRows,
-        "Cushing Crude Oil"
-      ),
+      cushing_inventory:
+        calculateInventory(
+          cushingRows,
+          "Cushing Crude Oil"
+        ),
 
-      gasoline_inventory: calculateMetric(
-        gasolineRows,
-        "U.S. Total Motor Gasoline"
-      ),
+      gasoline_inventory:
+        calculateInventory(
+          gasolineRows,
+          "U.S. Total Motor Gasoline"
+        ),
 
-      distillate_inventory: calculateMetric(
-        distillateRows,
-        "U.S. Distillate Fuel Oil"
-      )
+      distillate_inventory:
+        calculateInventory(
+          distillateRows,
+          "U.S. Distillate Fuel Oil"
+        ),
+
+      crude_production:
+        calculateProduction(
+          productionRows
+        ),
+
+      refinery_utilization:
+        calculateUtilization(
+          utilizationRows
+        )
     };
 
-    // EIA updates weekly, so cache the result.
+
+    // -----------------------------------
+    // CACHE
+    // -----------------------------------
+
     res.setHeader(
       "Cache-Control",
       "s-maxage=21600, stale-while-revalidate=86400"
