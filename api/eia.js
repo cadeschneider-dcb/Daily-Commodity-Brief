@@ -64,7 +64,7 @@ export default async function handler(req, res) {
     const crudeRows = await getEiaData(
       stocksUrl,
       "&facets[product][]=EPC0" +
-      "&facets[process][]=SAXL" +
+      "&facets[process][]=SAL" +
       "&facets[duoarea][]=NUS"
     );
 
