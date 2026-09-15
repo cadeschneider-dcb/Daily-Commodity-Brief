@@ -8,22 +8,20 @@ export default async function handler(req, res) {
       });
     }
 
-    const series =
-      "W_EPC0_SAX_NUS_MBBL";
-
     const url =
       "https://api.eia.gov/v2/petroleum/stoc/wstk/data/" +
       `?api_key=${apiKey}` +
       "&frequency=weekly" +
       "&data[0]=value" +
-      `&facets[series][]=${series}` +
+      "&facets[product][]=EPC0" +
+      "&facets[process][]=SAXL" +
+      "&facets[duoarea][]=NUS" +
       "&sort[0][column]=period" +
       "&sort[0][direction]=desc" +
       "&offset=0" +
       "&length=2";
 
     const response = await fetch(url);
-
     const data = await response.json();
 
     if (!response.ok) {
@@ -45,11 +43,8 @@ export default async function handler(req, res) {
     const latest = rows[0];
     const previous = rows[1];
 
-    const latestValue =
-      Number(latest.value);
-
-    const previousValue =
-      Number(previous.value);
+    const latestValue = Number(latest.value);
+    const previousValue = Number(previous.value);
 
     const weeklyChange =
       latestValue - previousValue;
@@ -57,17 +52,15 @@ export default async function handler(req, res) {
     const weeklyPercentChange =
       (weeklyChange / previousValue) * 100;
 
-    res.setHeader(
-      "Cache-Control",
-      "s-maxage=21600, stale-while-revalidate=86400"
-    );
-
     return res.status(200).json({
       success: true,
 
       crude_inventory: {
         series:
           "U.S. Commercial Crude Oil Inventories",
+
+        definition:
+          "Ending stocks excluding SPR and lease stocks",
 
         unit:
           "thousand barrels",
@@ -86,6 +79,9 @@ export default async function handler(req, res) {
 
         weekly_change:
           weeklyChange,
+
+        weekly_change_mmbbl:
+          weeklyChange / 1000,
 
         weekly_percent_change:
           weeklyPercentChange
